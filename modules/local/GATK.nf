@@ -91,6 +91,36 @@ process CreateSequenceDictionary {
   """
 }
 
+process MarkDuplicates {
+  tag "$i_readname"
+  label 'gatk'
+  publishDir "${params.outdir}/03_PrepGATK"
+
+  input:  // [readgroup, unmapped reads, mapped reads]
+  tuple val(i_readname), path(merge_bam), path(merge_bai)
+
+  output: // merged bam and bai files
+  tuple val("${i_readname}"), path("${i_readname}_markduplicates.bam"), path("${i_readname}_markduplicates.bai")
+
+  script:
+  """
+  ${gatk_app} \
+       MarkDuplicates \
+       --INPUT ${merge_bam} \
+       --OUTPUT ${i_readname}_markduplicates.bam  \
+       --CREATE_INDEX true \
+       --VALIDATION_STRINGENCY SILENT \
+       --METRICS_FILE ${i_readname}_markduplicates.metrics
+  """
+
+  stub:
+  """
+  #! /usr/bin/env bash
+  touch ${i_readname}_markduplicates.bam
+  touch ${i_readname}_markduplicates.bai
+  """
+}
+
 process samtools_faidx {
   tag "${genome_fasta.simpleName}"
   label 'samtools'

@@ -8,20 +8,16 @@ workflow SNP_EFF_ANNOTATION {
   take:
   genome_ch
   gff_ch
-  fasta_ch
   vcf_ch
 
   main:
-  // Building snpEff database
-  genome_ch
-  | combine(gff_ch)
-  | combine(fasta_ch)
-  | snpEff_Build
 
-  // Annotating variants using snpEff
-  annotated_vcf_ch = vcf_ch
-    | combine(genome_ch)
-    | snpEff_Annotate
+  annotated_vcf_ch = genome_ch
+  | combine(gff_ch)
+  | snpEff_Build    // Building snpEff database
+  | combine(genome_ch)
+  | combine(vcf_ch)
+  | snpEff_Annotate // Annotating variants using snpEff
 
   emit:
   annotated_vcf = annotated_vcf_ch

@@ -3,6 +3,7 @@
 nextflow.enable.dsl=2
 
 include { CreateSequenceDictionary;
+          MarkDuplicates;
           samtools_faidx;
           keep_only_pass;
           bedtools_makewindows; } from '../../../modules/local/GATK.nf'
@@ -14,10 +15,6 @@ include { pbmm2_index;
           GenotypeGVCFs as GenotypeGVCFs_LongRead;
           calc_DPvalue as calc_DPvalue_LongRead;
           VariantFiltration as VariantFiltration_LongRead } from '../../../modules/local/LongReadseq.nf'
-
-include { MarkDuplicates as MarkDuplicates_LongRead; } from '../../../modules/local/RNAseq.nf'
-
-
 
 workflow LONGREAD_VARIANT_CALLING {
   take:
@@ -44,7 +41,7 @@ workflow LONGREAD_VARIANT_CALLING {
     | pbmm2_index
     | combine(cleanreads_ch)
     | pbmm2_align
-    | MarkDuplicates_LongRead
+    | MarkDuplicates
     | combine(windows_ch)
     | view
     | combine(genome_ch)

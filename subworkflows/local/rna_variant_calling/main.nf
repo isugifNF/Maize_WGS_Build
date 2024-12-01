@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 include { FastqToSam;
           MarkIlluminaAdapters;
           CreateSequenceDictionary;
+          MarkDuplicates;
           samtools_faidx;
           bedtools_makewindows;
           CombineGVCFs;
@@ -20,7 +21,6 @@ include { SamToFastq as SamToFastq_RNA;
           STAR_index;
           STAR_align;
           MergeBamAlignment as MergeBamAlignment_RNA; 
-          MarkDuplicates; 
           SplitNCigarReads;
           gatk_HaplotypeCaller as gatk_HaplotypeCaller_RNA; } from '../../../modules/local/RNAseq.nf'
 
