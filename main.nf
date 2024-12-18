@@ -90,7 +90,7 @@ def parameters_valid = ['help','outdir',
   'singularity_img','docker_img','container_img',
   'gatk_app','gatk_haplotype_caller_params',
   'star_app','star_index_params','star_index_file','bwamem2_app','samtools_app','bedtools_app','datamash_app','vcftools_app',
-  'pbmm2_app',
+  'pbmm2_app','snpeff_params',
   'java_options','window','queueSize','queue-size','account', 'threads', 'gatk_cluster_options'] as Set
 
 def parameter_diff = params.keySet() - parameters_valid
