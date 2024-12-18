@@ -8,6 +8,8 @@ include { RNA_VARIANT_CALLING } from './subworkflows/local/rna_variant_calling/m
 
 include { LONGREAD_VARIANT_CALLING } from './subworkflows/local/long_read_variant_calling/main.nf'
 
+include { SNP_EFF_ANNOTATION } from './subworkflows/local/variant_annotation/main.nf'
+
 def helpMsg() {
   log.info """
    Usage:
@@ -36,6 +38,11 @@ def helpMsg() {
     --invariant             Output invariant sites [default:false]
     --gtf                   Gene Transfer Format file, only required for RNAseq input [default:false]
     --window                Window size passed to bedtools for parallel GATK Haplotype calls [default:${params.window}]
+
+  Optional annotation of variants arguments:
+    --annotate              Determine if annotation steps will be executed [default: ${params.annotate}]
+    --gff                   Provide path to Gene Feature Format file as it's required for the annotation pipeline [default: ${params.gff}]
+    --vcf                   Provide path to VCF file, to skip variant calling to speedup annotation pipeline [default: ${params.vcf}]
 
    Optional configuration arguments:
     -profile                Configuration profile to use. Can use multiple (comma separated)
@@ -79,10 +86,11 @@ if(params.help){
 
 def parameters_valid = ['help','outdir',
   'genome','gtf','reads','reads_file','long_reads','invariant','seq',
+  'annotate','gff','vcf',
   'singularity_img','docker_img','container_img',
   'gatk_app','gatk_haplotype_caller_params',
   'star_app','star_index_params','star_index_file','bwamem2_app','samtools_app','bedtools_app','datamash_app','vcftools_app',
-  'pbmm2_app',
+  'pbmm2_app','snpeff_params',
   'java_options','window','queueSize','queue-size','account', 'threads', 'gatk_cluster_options'] as Set
 
 def parameter_diff = params.keySet() - parameters_valid
@@ -99,7 +107,16 @@ workflow {
     exit 1, "[Missing File(s) Error] This pipeline requires a reference '--genome [GENOME.fasta]' \n"
   }
 
-  if (params.seq != "longread") {
+  if (params.annotate) {
+    if (params.gff && params.vcf) {
+      gff_ch = channel.fromPath(params.gff, checkIfExists:true)
+        | view {file -> "GFF file : $file "}
+      vcf_ch = channel.fromPath(params.vcf, checkIfExists:true)
+        | view {file -> "VCF file : $file "}
+    } else {
+      exit 1, "[Missing File(s) Error] Annotation mode requires both '--gff [annotation.gff]' and '--vcf [variants.vcf]' files\n"
+    }
+  } else if (params.seq != "longread") {
     reads_ch = channel.fromFilePairs(params.reads, checkIfExists:true)
       | view {files -> "Read files : $files "}
   } else if (params.reads_file) {
@@ -114,17 +131,20 @@ workflow {
     exit 1, "[Missing File(s) Error] This pipeline requires either paired-end read files as a glob '--reads [*_{r1,r2}.fq.gz]' or as a tab-delimited text file '--reads_file [READS_FILE.txt]'\n"
   }
 
-  if (params.seq == "dna"){
-    DNA_VARIANT_CALLING(genome_ch, reads_ch)
-  } else if (params.seq == "rna") {
-    if(params.gtf) {
-      gtf_ch = channel.fromPath(params.gtf, checkIfExists:true)
-    }else{
-      exit 1, "[Missing File(s) Error] This pipeline requires a gtf file '--gtf [GENOME.gtf]' \n"
+  if(!params.annotate){
+    if (params.seq == "dna"){
+      DNA_VARIANT_CALLING(genome_ch, reads_ch)
+    } else if (params.seq == "rna") {
+      if(params.gtf) {
+        gtf_ch = channel.fromPath(params.gtf, checkIfExists:true)
+      }else{
+        exit 1, "[Missing File(s) Error] This pipeline requires a gtf file '--gtf [GENOME.gtf]' \n"
+      }
+      RNA_VARIANT_CALLING(genome_ch, reads_ch, gtf_ch)
+    } else if (params.seq == "longread") {
+      LONGREAD_VARIANT_CALLING(genome_ch, reads_ch)
     }
-    
-    RNA_VARIANT_CALLING(genome_ch, reads_ch, gtf_ch)    
-  } else if (params.seq == "longread") {
-    LONGREAD_VARIANT_CALLING(genome_ch, reads_ch)
+  } else {
+    SNP_EFF_ANNOTATION(genome_ch, gff_ch, vcf_ch)
   }
 }
